@@ -1,0 +1,3 @@
+esphome/ESPAsyncTCP-esphome@^2.0.0
+esphome/ESPAsyncWebServer-esphome@^3.2.2
+adafruit/Adafruit PWM Servo Driver Library@^2.4.0
