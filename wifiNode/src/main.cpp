@@ -12,10 +12,13 @@ const char* password = "12345678";
 #define FRONT_LEFT_KNEE 4
 #define FRONT_RIGHT_HIP 9
 #define FRONT_RIGHT_KNEE 10
-#define BACK_LEFT_HIP 14
-#define BACK_LEFT_KNEE 15
+#define BACK_LEFT_KNEE 14
+#define BACK_LEFT_HIP 15
 #define BACK_RIGHT_HIP 0
 #define BACK_RIGHT_KNEE 2
+
+
+int currentServo = -1; // Servo actualmente moviéndose, -1 significa ninguno
 
 // Pines del SW-520D
 const int tiltSensorPin = D5;  // GPIO pin para el sensor de nivel (SW520D)
@@ -49,7 +52,9 @@ void initPCA9685() {
 
 // Función para mover un servo
 void moveServo(uint8_t num, uint16_t position) {
+  currentServo = num; // Actualizar el servo actual
   pca9685.setPWM(num, 0, position);
+  currentServo = -1; // Restablecer el servo actual
 }
 void position() {
   //Para 2
@@ -88,8 +93,18 @@ void position2() {
   Serial.println("Secuencia completada");
 }
 
+int walkRepeats = 0; // Número de repeticiones completadas
+const int maxRepeats = 3; // Número total de repeticiones deseadas
 // Secuencia de caminar completa
 void walkSequence() {
+
+ if (walkRepeats >= maxRepeats) { // Si se completaron las repeticiones, reiniciar estado
+    currentState = IDLE;
+    Serial.println("Secuencia de caminar completada.");
+    walkRepeats = 0; // Reiniciar contador para próximas ejecuciones
+    return;
+  }
+
   switch (sequenceStep) {
     case 0:  // mover la pata delantera izquierda
       
@@ -115,7 +130,7 @@ void walkSequence() {
           delay(200);
         moveServo(BACK_RIGHT_KNEE, 300);  // 2
         delay(100);
-        moveServo(BACK_RIGHT_HIP, SERVOMAX);   // 0
+        moveServo(BACK_RIGHT_HIP, 700);   // 0 antes srvomax
         delay(100);
         moveServo(BACK_RIGHT_HIP, 500);   // 0
         delay(100);
@@ -142,6 +157,8 @@ void walkSequence() {
         delay(100);
         moveServo(FRONT_RIGHT_KNEE, 150); //10
         delay(100);*/
+        moveServo(BACK_RIGHT_KNEE, 300); //nuevo inclinacion en para derecha trassera para que la pata derecha delantera toque bien el suelo
+
          moveServo(FRONT_RIGHT_HIP, 550);  //9
         delay(100);
         moveServo(FRONT_RIGHT_KNEE, 300); //10
@@ -149,6 +166,8 @@ void walkSequence() {
         moveServo(FRONT_RIGHT_HIP, 250);  //9
         delay(100);
         moveServo(FRONT_RIGHT_KNEE, 300); //10
+
+        moveServo(BACK_RIGHT_KNEE, 400); //nuevo antes nada acomodo el pie trasero
         delay(100);
         movementStartTime = millis();
         sequenceStep++;
@@ -161,24 +180,31 @@ void walkSequence() {
           #define BACK_LEFT_KNEE 15*/
           moveServo(4, 650);
           moveServo(10,150);
-          delay(200);
+          delay(100);
+           moveServo(BACK_LEFT_KNEE, 500); // 15 antes 240
+          delay(100);
+        
+          moveServo(BACK_LEFT_HIP,350);//14 antes 300
+          delay(100);
+        
+   
+          moveServo(BACK_LEFT_KNEE, 450); // 15 antes 300
+         moveServo(BACK_LEFT_HIP,400);//14 antes 500
 
-          moveServo(BACK_LEFT_KNEE, 240); // 15
-          delay(100);
-          moveServo(BACK_LEFT_KNEE, 300); // 15
-          delay(100);
-          moveServo(BACK_LEFT_HIP,400);//14
-          delay(100);
-          moveServo(BACK_LEFT_HIP,400);//14
-          delay(100);
-
+          
+          position2(); //nuevo antes nada acomodo los pies traseros ver si se lelga a ejecutar todo
            moveServo(4, 600);
           moveServo(10,200);
-          
         movementStartTime = millis();
         sequenceStep = 0;  // Reinicia la secuencia
+        position();//nuevo
+        position2();//nuevo
+        walkRepeats++; // Incrementar el contador de repeticiones
+        Serial.print("Repetición ");
+        Serial.print(walkRepeats);
+        Serial.println(" completada.");/*
         currentState = IDLE;
-        Serial.println("Secuencia de caminar completada");
+        Serial.println("Secuencia de caminar completada");*/
       }
       break;
 
@@ -197,17 +223,23 @@ void tiltRobot() {
   int angleFrontLeft = 600;  // Ángulo inicial de 90 grados
   int angleFrontRight = 200; // Ángulo inicial de 90 grados
 
-  int angleBackLeft = 450;  // Ángulo inicial hip 15
-  int angleBackRight = 500; // Ángulo inicial hip 0
+  //int angleBackLeft = 450;  // Ángulo inicial hip 15
+  //int angleBackRight = 500; // Ángulo inicial hip 0
+
+  int angleFrontLeftHip = 450;  // Ángulo inicial hip 15
+  int angleFrontRightHip = 300; // Ángulo inicial hip 0
   // Bajar las patas delanteras hasta que el SW-520D detecte inclinación
   do {
     angleFrontLeft += 10;  // Bajar la pata delantera izquierda
     angleFrontRight -= 10; // Bajar la pata delantera derecha
 
-    angleBackLeft -=10;
-    angleBackRight +=10; 
-    if (angleBackLeft >= 400) angleBackLeft = 400;
-    if (angleBackRight >= 600) angleBackRight = 600;
+   // angleBackLeft -=10;
+   // angleBackRight +=10; 
+
+    angleFrontLeftHip += 10;  // Bajar la pata delantera izquierda
+    angleFrontRightHip -= 10; // Bajar la pata delantera derecha
+  //  if (angleBackLeft >= 400) angleBackLeft = 400;
+   // if (angleBackRight >= 600) angleBackRight = 600;
     
     // Límite de ángulo para no exceder
    /* if (angleFrontLeft >= SERVOMAX+100) angleFrontLeft = SERVOMAX;
@@ -217,16 +249,20 @@ void tiltRobot() {
     moveServo(4, angleFrontLeft);
     moveServo(10, angleFrontRight);
     
-    moveServo(15, angleBackLeft);
+    /*moveServo(15, angleBackLeft);
     moveServo(0, angleBackRight);
-
-    delay(100); // Pequeña pausa para movimientos suaves
+    */
+    moveServo(FRONT_LEFT_HIP, angleFrontLeftHip);
+    moveServo(FRONT_RIGHT_HIP, angleFrontRightHip);
+    
+    delay(50); // Pequeña pausa para movimientos suaves
 
   } while (digitalRead(tiltSensorPin) == LOW); // Continuar hasta detectar inclinación
 
   Serial.println("Robot inclinado. Nivel detectado.");
   currentState = IDLE;
   position();
+
 }
 
 // Configuración inicial
@@ -250,39 +286,76 @@ void setup() {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Control del Robot Arduino</title>
       <style>
-        body {
-          font-family: 'Verdana', sans-serif;
-          background-color: #fce4ec;
-          margin: 0;
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          color: #6f2c91;
-        }
-        h1 {
-          color: #ad4b99;
-          margin-bottom: 20px;
-        }
-        .button {
-          background-color: #ff6f61;
-          border: none;
-          color: white;
-          padding: 15px 25px;
-          text-align: center;
-          text-decoration: none;
-          display: inline-block;
-          font-size: 18px;
-          margin: 10px;
-          cursor: pointer;
-          border-radius: 30px;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-          transition: background-color 0.3s, transform 0.2s;
-        }
-        .button:hover {
-          background-color: #e65c5c;
-          transform: translateY(-2px);
-        }
+         body {
+    font-family: 'Verdana', sans-serif;
+    background-color: #fce4ec;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #6f2c91;
+  }
+
+  h1 {
+    color: #ad4b99;
+    margin-bottom: 20px;
+  }
+
+  .button {
+    background-color: #ff6f61;
+    border: none;
+    color: white;
+    padding: 15px 25px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 18px;
+    margin: 10px;
+    cursor: pointer;
+    border-radius: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s, transform 0.2s;
+  }
+
+  .button:hover {
+    background-color: #e65c5c;
+    transform: translateY(-2px);
+  }
+
+  .servo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .servo-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .servo {
+    width: 60px;
+    height: 60px;
+    background-color: #fff0f5;
+    border: 1px solid #ff77a6;
+    border-radius: 15px;
+    margin: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(255, 105, 180, 0.3);
+    transition: background-color 0.3s;
+  }
+
+  .servo.active {
+    background-color: #ff4081; /* Color activo */
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 64, 129, 0.9); /* Resalte dinámico */
+    font-weight: bold;
+  }
         .sensor-output {
           background-color: #fff;
           border: 1px solid #ffd1dc;
@@ -303,40 +376,10 @@ void setup() {
           font-weight: bold;
           color: #ff4081;
         }
-        .servo-animation {
-          margin-top: 30px;
-          font-size: 20px;
-          color: #ff5a5a;
-          transition: transform 0.5s;
-          font-style: italic;
-        }
-        .servo-container {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          margin-top: 20px;
-        }
-        .servo {
-          width: 60px;
-          height: 60px;
-          background-color: #fff0f5;
-          border: 1px solid #ff77a6;
-          border-radius: 15px;
-          margin: 5px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          box-shadow: 0 2px 6px rgba(255, 105, 180, 0.3);
-          transition: background-color 0.3s;
-        }
-        .servo.active {
-          background-color: #ffaeae; /* Color activo */
-          color: white;
-          box-shadow: 0 0 10px rgba(255, 105, 180, 0.8);
-        }
+        
         .status { font-size: 24px; margin: 20px 0; }
-          
+        
+
       </style>
     </head>
       <body>
@@ -346,24 +389,22 @@ void setup() {
         <button class="button" onclick="startTilt()">Inclinarse</button>
        
         <div class="sensor-output">
-          <div class="sensor-title">Sensor de Nivel</div>
-          <div class="sensor-state" id="nivel">0</div>
-        </div>
-         <div class="status">
-          Sensor de Nivel: <span id="sensorState">Desconocido</span>
-            <p id="sensorData">Estado del Sensor: </p>
+          <div class="sensor-title">Sensor de Nivel (activo: 30°)</div>
+          <div class="sensor-state" id="nivel">
+            <p id="sensorData"> </p>
 
 
         </div>
+        </div>
+         
         
-        <div class="servo-animation" id="servoMovimiento">Moviendo Servos: Ninguno</div>
-        <div class="servo-container" id="servoContainer"></div>
+       <div id="servoContainer"></div>
         
         <script>
 
           setInterval(() => {
             fetch("/sensor").then(response => response.text()).then(data => {
-              document.getElementById("sensorData").innerText = "Estado del Sensor: " + data;
+              document.getElementById("sensorData").innerText = "" + data;
             });
           }, 1000);
 
@@ -379,25 +420,52 @@ void setup() {
         function startTilt() {
           fetch('/tilt').then(() => console.log('Inclinación iniciada'));
         }
-        const numServos = 12;
-        const servoContainer = document.getElementById("servoContainer");
+// Obtener el contenedor principal
+const servoContainer = document.getElementById("servoContainer");
 
-        // Crear los elementos de servo
-        for (let i = 1; i <= numServos; i++) {
-          const servo = document.createElement("div");
-          servo.className = "servo";
-          servo.id = `servo${i}`;
-          servo.innerText = `Servo ${i}`;
-          servoContainer.appendChild(servo);
+// Orden de los servos (en filas)
+const servoOrder = [
+  [1, 5, 11, 13], // Primera fila
+  [0, 6, 9, 15],  // Segunda fila
+  [2, 4, 10, 14]  // Tercera fila
+];
+
+// Crear las filas de servos
+servoOrder.forEach((nivel) => {
+  const fila = document.createElement("div");
+  fila.className = "servo-row";
+
+  nivel.forEach((id) => {
+    const servo = document.createElement("div");
+    servo.className = "servo";
+    servo.id = `servo${id}`; // ID único para cada servo
+    servo.innerText = `Servo ${id}`;
+    fila.appendChild(servo);
+  });
+
+  servoContainer.appendChild(fila);
+});
+
+// Resaltar dinámicamente el servo activo
+function resaltarServoActivo() {
+  fetch('/currentServo') // Consultar el servo activo desde el servidor
+    .then((response) => response.text())
+    .then((servoActual) => {
+      const servos = document.querySelectorAll(".servo");
+      servos.forEach((servo) => servo.classList.remove("active")); // Quitar cualquier resaltado previo
+
+      if (servoActual !== "-1") { // Si hay un servo activo
+        const servoActivo = document.getElementById(`servo${servoActual}`);
+        if (servoActivo) {
+          servoActivo.classList.add("active"); // Agregar la clase activa
         }
-        function highlightServo(servoIds) {
-          const servos = document.querySelectorAll(".servo");
-          servos.forEach(servo => servo.classList.remove("active"));
-          servoIds.forEach(id => {
-            const servoElement = document.getElementById(`servo${id}`);
-            if (servoElement) servoElement.classList.add("active");
-          });
-        }
+      }
+    })
+    .catch((error) => console.error('Error al obtener el servo activo:', error));
+}
+
+// Actualizar el resaltado periódicamente
+setInterval(resaltarServoActivo, 200); // Llamar cada 200ms
 
           function startWalk() {
             fetch('/startWalk').then(response => console.log('Iniciando caminar'));
@@ -424,6 +492,11 @@ void setup() {
       </html>
     )rawliteral");
   });
+server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
+  Serial.print("Servo activo: ");
+  Serial.println(currentServo); // Muestra el valor en la consola serial
+  request->send(200, "text/plain", String(currentServo)); // Devuelve el valor al cliente
+});
 
    server.on("/sensor", HTTP_GET, [](AsyncWebServerRequest *request) {
     int sensorValue = digitalRead(tiltSensorPin);
