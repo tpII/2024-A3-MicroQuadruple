@@ -267,6 +267,7 @@ void walkSequence() {
   }
 }
 
+int16_t umbralInclinacion = 35; // Inclinación hacia adelante.
 
 // Función para inclinarse
 void tiltRobot() {
@@ -275,11 +276,7 @@ void tiltRobot() {
 
   int16_t x, y, z;
   readAcceleration(x, y, z);
-
   
-  // Umbral de inclinación (ajústalo según el comportamiento que desees)
-  int16_t umbralInclinacion = -180; // Inclinación hacia adelante.
-
   // Configurar ángulos iniciales
   int angleFrontLeft = 600;  // Ángulo inicial de 90 grados
   int angleFrontRight = 200; // Ángulo inicial de 90 grados
@@ -306,9 +303,11 @@ void tiltRobot() {
     
     delay(50); // Pequeña pausa para movimientos suaves
 
-    // Leer los valores de aceleración nuevamente para verificar si el robot sigue inclinado
 
-  }  while (z < umbralInclinacion); // Continuar hasta detectar inclinación
+    readAcceleration(x, y, z);
+
+
+  }  while (y < umbralInclinacion); // Continuar hasta detectar inclinación
 
   Serial.println("Robot inclinado. Nivel detectado.");
   currentState = IDLE;
