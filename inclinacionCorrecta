@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 #include <ESP8266WiFi.h>
@@ -267,7 +268,7 @@ void walkSequence() {
   }
 }
 
-int16_t umbralInclinacion = 35; // Inclinación hacia adelante.
+int16_t umbralInclinacion = 30; // Inclinación hacia adelante.
 
 // Función para inclinarse
 void tiltRobot() {
