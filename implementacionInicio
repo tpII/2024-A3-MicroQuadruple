@@ -50,9 +50,11 @@ enum RobotState {
   WALKING,
   TILTING
 };
-
 RobotState currentState = IDLE;
 
+int sequenceStep = 0;  // Controla la secuencia de movimiento
+unsigned long movementStartTime = 0; // Tiempo de inicio de cada movimiento
+int movementDelay = 300;  // Tiempo entre movimientos en ms
 
 bool initializeADXL345() {
   // Verifica la conexión al sensor
@@ -96,10 +98,6 @@ void readAcceleration(int16_t &x, int16_t &y, int16_t &z) {
   }
 }
 
-int sequenceStep = 0;  // Controla la secuencia de movimiento
-unsigned long movementStartTime = 0; // Tiempo de inicio de cada movimiento
-int movementDelay = 300;  // Tiempo entre movimientos en ms
-
 // Función para inicializar el PCA9685
 void initPCA9685() {
   Wire.begin();
@@ -113,7 +111,6 @@ void moveServo(uint8_t num, uint16_t position) {
   pca9685.setPWM(num, 0, position);
   currentServo = -1; // Restablecer el servo actual
 }
-
 void position() {
   //Para 2
   moveServo(5, 330);  //
@@ -132,7 +129,6 @@ void position() {
   delay(250);
   Serial.println("Secuencia completada");
 }
-
 void position2() {
   //Pata 1
   moveServo(1, 500);  //
@@ -206,7 +202,16 @@ void walkSequence() {
 
     case 2:  // mover la pata delantera derecha
       if (millis() - movementStartTime >= movementDelay) {
-
+        /*#define FRONT_RIGHT_HIP 9
+          #define FRONT_RIGHT_KNEE 10*/
+       /*moveServo(FRONT_RIGHT_HIP, SERVOMIN*2);  //9
+        delay(100);
+        moveServo(FRONT_RIGHT_KNEE, SERVOMIN*2); //10
+        delay(100);
+        moveServo(FRONT_RIGHT_HIP, 250);  //9
+        delay(100);
+        moveServo(FRONT_RIGHT_KNEE, 150); //10
+        delay(100);*/
         moveServo(BACK_RIGHT_KNEE, 300); //nuevo inclinacion en para derecha trassera para que la pata derecha delantera toque bien el suelo
 
          moveServo(FRONT_RIGHT_HIP, 550);  //9
@@ -226,7 +231,8 @@ void walkSequence() {
 
     case 3:  // Lmover la pata trasera izquierda
       if (millis() - movementStartTime >= movementDelay) {
-
+        /*#define BACK_LEFT_HIP 14
+          #define BACK_LEFT_KNEE 15*/
           moveServo(4, 650);
           moveServo(10,150);
           delay(100);
@@ -264,18 +270,25 @@ void walkSequence() {
 
 // Función para inclinarse
 void tiltRobot() {
-  currentState = TILTING;
 
+   currentState = TILTING;
+
+  int16_t x, y, z;
+  readAcceleration(x, y, z);
+
+  
+  // Umbral de inclinación (ajústalo según el comportamiento que desees)
+  int16_t umbralInclinacion = -180; // Inclinación hacia adelante.
 
   // Configurar ángulos iniciales
   int angleFrontLeft = 600;  // Ángulo inicial de 90 grados
   int angleFrontRight = 200; // Ángulo inicial de 90 grados
 
-
   int angleFrontLeftHip = 450;  // Ángulo inicial hip 15
   int angleFrontRightHip = 300; // Ángulo inicial hip 0
-  // Bajar las patas delanteras hasta que el SW-520D detecte inclinación
+
   do {
+
     angleFrontLeft += 10;  // Bajar la pata delantera izquierda
     angleFrontRight -= 10; // Bajar la pata delantera derecha
 
@@ -293,24 +306,21 @@ void tiltRobot() {
     
     delay(50); // Pequeña pausa para movimientos suaves
 
-  } while (digitalRead(tiltSensorPin) == LOW); // Continuar hasta detectar inclinación
+    // Leer los valores de aceleración nuevamente para verificar si el robot sigue inclinado
+
+  }  while (z < umbralInclinacion); // Continuar hasta detectar inclinación
 
   Serial.println("Robot inclinado. Nivel detectado.");
   currentState = IDLE;
   position();
-
 }
 
 // Configuración inicial
 void setup() {
+  Serial.begin(115200);
+  initPCA9685();
 
-    Serial.begin(115200); // Inicia la comunicación serial
-
-  while (!Serial) {
-    delay(10);
-  }
-
-  // Inicia el bus I2C por software
+ // Inicia el bus I2C por software
   myWire.begin();
 
   // Configura el sensor ADXL345
@@ -319,9 +329,6 @@ void setup() {
     while (1); // Detiene el programa si falla
   }
   Serial.println("ADXL345 inicializado correctamente.");
-
-
-  initPCA9685();
 
   // Configuración de Access Point
   WiFi.softAP(ssid, password);
@@ -545,7 +552,6 @@ setInterval(resaltarServoActivo, 200); // Llamar cada 200ms
       </html>
     )rawliteral");
   });
-
 server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
   Serial.print("Servo activo: ");
   Serial.println(currentServo); // Muestra el valor en la consola serial
@@ -570,7 +576,6 @@ server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", "Robot ocupado");
     }
   });
-
   server.on("/startWalk", HTTP_GET, [](AsyncWebServerRequest *request) {
     if (currentState == IDLE) {
       currentState = WALKING;
@@ -580,13 +585,11 @@ server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
       request->send(200, "text/plain", "Robot ocupado");
     }
   });
-
   server.on("/position", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("Iniciando secuencia...");
     position();  // Llamar a la secuencia de caminar
     request->send(200, "text/plain", "Robot posicionado");
   });
-
   server.on("/position2", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("Iniciando secuencia...");
     position2();  // Llamar a la secuencia de caminar
@@ -602,13 +605,10 @@ void loop() {
   if (currentState == WALKING) {
     walkSequence();
   }
-
-// Leer los valores de aceleración
   int16_t x, y, z;
-
   readAcceleration(x, y, z);
-
-  // Imprime los valores en la terminal
+    
+      // Imprime los valores en la terminal
   Serial.print("Aceleración - X: ");
   Serial.print(x);
   Serial.print(" Y: ");
@@ -616,6 +616,4 @@ void loop() {
   Serial.print(" Z: ");
   Serial.println(z);
 
-  delay(500); // Espera medio segundo entre lecturas
 }
-
