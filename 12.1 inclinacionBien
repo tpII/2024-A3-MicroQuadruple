@@ -121,7 +121,6 @@ void calculateAngles(int16_t x, int16_t y, int16_t z, int &angleX, int &angleY, 
   angleZ = round(angleZ_f); // Redondea al entero más cercano
 }
 
-
 // Función para inicializar el PCA9685
 void initPCA9685() {
   Wire.begin();
@@ -290,7 +289,6 @@ void walkSequence() {
     
   }
 }
-
 int16_t umbralInclinacion = 60; // Inclinación hacia adelante.
 bool seInclino = false;
 
@@ -623,13 +621,7 @@ server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "Robot posicionado");
   });
 
-  server.on("/position2", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("Iniciando secuencia...");
-    position2();  // Llamar a la secuencia de caminar
-    request->send(200, "text/plain", "Robot posicionado");
-  });
-
-  server.on("/angles", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/angles", HTTP_GET, [](AsyncWebServerRequest *request){
 
     int16_t x, y, z;
     int angleX, angleY, angleZ;
@@ -644,6 +636,12 @@ server.on("/currentServo", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "application/json", anglesJson);
   });
 
+  server.on("/position2", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.println("Iniciando secuencia...");
+    position2();  // Llamar a la secuencia de caminar
+    request->send(200, "text/plain", "Robot posicionado");
+  });
+
   // Iniciar el servidor
   server.begin();
 }
@@ -654,8 +652,6 @@ void loop() {
     walkSequence();
   }
   int16_t x, y, z;
-  int angleX, angleY, angleZ;
-
   readAcceleration(x, y, z);
     
       // Imprime los valores en la terminal
@@ -665,17 +661,10 @@ void loop() {
   Serial.print(y);
   Serial.print(" Z: ");
   Serial.println(z);
-    // Calcula los ángulos de inclinación
-  calculateAngles(x, y, z, angleX, angleY, angleZ);
-  Serial.print(" | Angle X: "); Serial.print(angleX);
-  Serial.print(" Angle Y: "); Serial.print(angleY);
-  Serial.print(" Angle Z: "); Serial.println(angleZ);
-  delay (500);
-
-  if (seInclino) {
+    if (seInclino) {
     delay (1600);
     position();
     seInclino = false;
   }
-}
 
+}
